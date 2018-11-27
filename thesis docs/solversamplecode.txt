@@ -1,0 +1,327 @@
+LISTTEST
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+from gurobipy import *
+M = 2
+T = 10
+m = Model('listtest')
+l= list([(i,t) for i in range(M) for t in range(T)])
+a1 = m.addVars(l, vtype=GRB.BINARY,name="a1")
+b1 = m.addVars(l, vtype=GRB.BINARY,name="b1")
+c1 = m.addVars(l, vtype=GRB.BINARY,name="c1")
+for i in range(M):
+    for t in range(T):
+        m.addConstr(a1[i,t] + b1[i,t] + c1[i,t] == 1, name="c0")
+m.update()
+
+#print(a1.values())
+
+#print(b1.values())
+#print(c1.values())
+
+POWERLE
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+from gurobipy import *
+
+# Model data
+
+EV = ['EV1', 'EV2']         # List of EV's
+nodes = ['a1', 'b1', 'c1', 'p']
+# phase and power
+
+phpow, capacity = multidict({
+  ('a1', 'p'):   7.2,
+  ('b1', 'p'):   7.2,
+  ('c1', 'p'):   7.2 })
+
+# Cost of charging a EV for 10 hours with an hour interval
+
+cost = {
+  1: 10,
+  2: 20,
+  3: 60,
+  4: 40,
+  5: 40,
+  6: 30,
+  7: 20,
+  8: 20,
+  9: 80,
+  10: 60 }
+
+m = Model('costoptimize')
+
+M = 2           # Max number of EV
+T = 10          # Max number of Timeslots
+
+# Create Variables
+tuplex = m.addVars(EV, phpow, obj=cost, name="tuplex")
+
+l= list([(x,y) for x in range(2) for y in range(10)])
+a1 = m.addVars(l, vtype=GRB.BINARY,name="a1")
+b1 = m.addVars(l, vtype=GRB.BINARY,name="b1")
+c1 = m.addVars(l, vtype=GRB.BINARY,name="c1")
+p = m.addVar(name="Power")
+#m.setObjective(C, GRB.MINIMIZE)
+
+#Power should be LE 7.2
+#m.addConstr((tuplex(h,i,j) <= capacity[i,j] for h in EV for i,j in phpow), "cap")
+
+for i,j in phpow:
+    m.addConstr((tuplex[h,i,j] for h in EV) <= capacity[i,j],
+                "cap[%s,%s]" % (i, j))
+
+GRIDTEST
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+from gurobipy import *
+M = 2
+T = 10
+pa =[]
+pb =[]
+pc =[]
+maxterm =[]
+"""patot =[]
+pbtot =[]
+pctot =[]"""
+m = Model('listtest')
+l= list([(i,t) for i in range(M) for t in range(T)])
+a1 = m.addVars(l, vtype=GRB.BINARY,name="a1")
+b1 = m.addVars(l, vtype=GRB.BINARY,name="b1")
+c1 = m.addVars(l, vtype=GRB.BINARY,name="c1")
+pab = m.addVar(name="Power_A_B")
+pbc = m.addVar(name="Power_B_C")
+pca = m.addVar(name="Power_C_A")
+maxterm = m.addVars(T, name="maxvar")
+p = m.addVars(l, name="Power")
+pa = m.addVars(l, name="Power in_a")
+pb = m.addVars(l, name="Power in_b")
+pc = m.addVars(l, name="Power in_c")
+patot = m.addVar(M, name="Tot Power in_a")
+pbtot = m.addVar(M, name="Tot Power in_b")
+pctot = m.addVar(M, name="Tot Power in_c")
+for t in range(T):
+    for i in range(M):
+    #if i < M :
+        pa[i,t] += a1[i,t] * p[i,t]
+        pb[i,t] += b1[i,t] * p[i,t]
+        pc[i,t] += c1[i,t] * p[i,t]
+        #i += 1
+        patot = pa.sum()
+        pbtot = pb.sum()
+        pctot = pc.sum()
+    pab = patot - pbtot
+    pbc = pbtot - pctot
+    pca = pctot - patot
+    maxterm[t] = max_(pab, pbc, pca)   
+    m.addConstr((maxterm[t] for t in range(T)) <= 4.6,  "Maxterm_Constraint")
+m.update()
+SOCTEST
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+from gurobipy import *
+
+# Model data
+
+EV = ['EV1', 'EV2']         # List of EV's
+nodes = [1, 2, 4, 6, 8, 10] # Total timeslots divided 
+#Energy = [Eint,Ereq]
+
+# phase and power
+
+phpow, capacity = multidict({
+  ('a', 'p'):   7.2,
+  ('b', 'p'):   7.2,
+  ('c', 'p'):   7.2 })
+
+# Cost of charging a EV for 10 hours with an hour interval
+
+cost = {
+  1: 10,
+  2: 20,
+  3: 60,
+  4: 40,
+  5: 40,
+  6: 30,
+  7: 20,
+  8: 20,
+  9: 80,
+  10: 60 }
+
+M = 2
+T = 10
+TS1 = 1         # Start time of EV1
+TD1 = 6         # End time of EV1
+TS2 = 4         # Start time of EV2
+TD2 = 10        # End time of EV1
+ft = 15         # Fixed time
+eff = 0.95      # Efficiency
+Eint = [10, 20] # Initial Energy in EV
+Ereq = [80, 60] # Required Energy in EV by user
+p = []
+C = []
+e = []
+co = []
+l= list([(i,t) for i in range(M) for t in range(T)])
+a1 = m.addVars(l, vtype=GRB.BINARY,name="a1")
+b1 = m.addVars(l, vtype=GRB.BINARY,name="b1")
+c1 = m.addVars(l, vtype=GRB.BINARY,name="c1")
+pab = m.addVar(name="Power_A_B")
+pbc = m.addVar(name="Power_B_C")
+pca = m.addVar(name="Power_C_A")
+maxterm = m.addVars(T, name="maxvar")
+p = m.addVars(l, name="Power")
+e = m.addVars(M, name="Energy")
+co = m.addVars(M, name="Market cost")
+C = m.addVar(name="Totcost")
+#set objective
+m.setObjective(C, GRB.MINIMIZE)
+
+#SOC user constraint
+for TS1 in range(TD1):
+    i = 0
+    e[i] += ft * p[i,TS1] * eff   # Energy consumed by EV1    
+    m.addConstr(e[i] + Eint[i] == Ereq[i], "User_constraint")
+    for k, v in cost.items():
+        if k == TS1:
+            co[i] = e[i] * cost.get(k)       # Cost for each EV 
+for TS2 in range(TD2):
+    i = 1
+    e[i] += ft * p[i,TS2] * eff   # Energy consumed by EV2
+    m.addConstr(e[i] + Eint[i] == Ereq[i], "User_constraint")
+    for k, v in cost.items():
+        if k == TS2:
+            co[i] = e[i] * cost.get(k)      # Cost for each EV
+#cost constraint:
+C = co.sum()
+
+# Save model
+#m.write('costtest.lp')
+m.optimize()
+
+FULLMODELCODE
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+from gurobipy import *
+
+# Model data
+
+EV = ['EV1', 'EV2']         # List of EV's
+nodes = ['a1', 'b1', 'c1', 'p']  
+#Energy = [Eint,Ereq]
+
+# phase and power
+
+phpow, capacity = multidict({
+  ('a', 'p'):   7.2,
+  ('b', 'p'):   7.2,
+  ('c', 'p'):   7.2 })
+
+# Cost of charging a EV for 10 hours with an hour interval
+
+cost = {
+  1: 10,
+  2: 20,
+  3: 60,
+  4: 40,
+  5: 40,
+  6: 30,
+  7: 20,
+  8: 20,
+  9: 80,
+  10: 60 }
+#Create optimization model
+m = Model('minimizecost')
+
+# Variable assignment
+M = 2
+T = 10
+TS1 = 1         # Start time of EV1
+TD1 = 6         # End time of EV1
+TS2 = 4         # Start time of EV2
+TD2 = 10        # End time of EV1
+ft = 15         # Fixed time
+eff = 0.95      # Efficiency
+Eint = [10, 20] # Initial Energy in EV
+Ereq = [80, 60] # Required Energy in EV by user
+p = []
+C = []
+e = []
+co = []
+pa =[]
+pb =[]
+pc =[]
+maxterm =[]
+
+# Create variables
+tuplex = m.addVars(EV, phpow, obj=cost, name="tuplex")
+l= list([(i,t) for i in range(M) for t in range(T)])
+a1 = m.addVars(l, vtype=GRB.BINARY,name="a1")
+b1 = m.addVars(l, vtype=GRB.BINARY,name="b1")
+c1 = m.addVars(l, vtype=GRB.BINARY,name="c1")
+p = m.addVars(l, name="Power")
+e = m.addVars(M, name="Energy")
+co = m.addVars(M, name="Market cost")
+C = m.addVar(name="Totcost")
+pab = m.addVar(name="Power_A_B")
+pbc = m.addVar(name="Power_B_C")
+pca = m.addVar(name="Power_C_A")
+maxterm = m.addVars(T, name="maxvar")
+pa = m.addVars(l, name="Power in_a")
+pb = m.addVars(l, name="Power in_b")
+pc = m.addVars(l, name="Power in_c")
+patot = m.addVar(M, name="Tot Power in_a")
+pbtot = m.addVar(M, name="Tot Power in_b")
+pctot = m.addVar(M, name="Tot Power in_c")
+
+#set objective
+m.setObjective(C, GRB.MINIMIZE)
+
+#Phase constraint
+for i in range(M):
+    for t in range(T):
+        m.addConstr(a1[i,t] + b1[i,t] + c1[i,t] == 1, name="c0")
+
+#Power should be LE 7.2
+for i,j in phpow:
+    m.addConstr((tuplex[h,i,j] for h in EV) <= capacity[i,j],
+                "cap[%s,%s]" % (i, j))
+
+#Grid constraint
+for t in range(T):
+    for i in range(M):
+    #if i < M :
+        pa[i,t] += a1[i,t] * p[i,t]
+        pb[i,t] += b1[i,t] * p[i,t]
+        pc[i,t] += c1[i,t] * p[i,t]
+        #i += 1
+        patot = pa.sum()
+        pbtot = pb.sum()
+        pctot = pc.sum()
+    pab = patot - pbtot
+    pbc = pbtot - pctot
+    pca = pctot - patot
+    maxterm[t] = max_(pab, pbc, pca)   
+    m.addConstr((maxterm[t] for t in range(T)) <= 4.6,  "Maxterm_Constraint")
+
+#SOC user constraint
+for TS1 in range(TD1):
+    i = 0
+    e[i] += ft * p[i,TS1] * eff   # Energy consumed by EV1    
+    m.addConstr(e[i] + Eint[i] == Ereq[i], "User_constraint")
+    for k, v in cost.items():
+        if k == TS1:
+            co[i] = e[i] * cost.get(k)       # Cost for each EV 
+for TS2 in range(TD2):
+    i = 1
+    e[i] += ft * p[i,TS2] * eff   # Energy consumed by EV2
+    m.addConstr(e[i] + Eint[i] == Ereq[i], "User_constraint")
+    for k, v in cost.items():
+        if k == TS2:
+            co[i] = e[i] * cost.get(k)      # Cost for each EV
+
+#cost constraint:
+C = co.sum()
+
+# Compute optimal solution
+m.optimize()
