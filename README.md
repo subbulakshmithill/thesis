@@ -6,3 +6,5 @@
   - Dumb scheduling
   - Day ahead scheduling
   - Dynamic scheduling
+ use the following link to see the code in DDD.ipynb
+ https://nbviewer.jupyter.org/github/subbulakshmithill/thesis/blob/master/DDD.ipynb
